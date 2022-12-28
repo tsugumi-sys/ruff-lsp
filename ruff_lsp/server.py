@@ -568,7 +568,12 @@ def completions(params: CompletionParams):
 
     return CompletionList(
         is_incomplete=False,
-        item=[CompletionItem(**item) for item in completions],
+        # item=[CompletionItem(**item) for item in completions],
+        item=[
+            CompletionItem(label="Item1"),
+            CompletionItem(label="Item2"),
+            CompletionItem(label="Item3"),
+        ],
     )
 
 
