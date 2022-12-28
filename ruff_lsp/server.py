@@ -574,7 +574,12 @@ def completions(params: CompletionParams):
     logger.info([item for item in completions])
     return CompletionList(
         is_incomplete=False,
-        item=[CompletionItem(label=item["label"]) for item in completions],
+        # item=[CompletionItem(label=item["label"]) for item in completions],
+        item=[
+            CompletionItem(label="Item1"),
+            CompletionItem(label="Item2"),
+            CompletionItem(label="Item3"),
+        ],
     )
 
 
