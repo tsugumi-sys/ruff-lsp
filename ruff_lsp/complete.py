@@ -30,10 +30,9 @@ def jedi_completion(
     resolve_eagerly = jedi_config.get("eager", False)
     code_position = position_to_jedi_linecolumn(document, position)
 
-    code_position["fuzzy"] = jedi_config.get("fuzzy", False)
     completions = jedi_script(
         jedi_config, workspace, document, use_document_path=True
-    ).complete(**code_position)
+    ).complete(**code_position, fuzzy=jedi_config.get("fuzzy", False))
 
     if not completions:
         return None
