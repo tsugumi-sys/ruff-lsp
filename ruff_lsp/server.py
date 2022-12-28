@@ -555,7 +555,7 @@ def _match_line_endings(document: workspace.Document, text: str) -> str:
 ###
 @LSP_SERVER.feature(TEXT_DOCUMENT_COMPLETION)
 def completions(params: CompletionParams):
-    jedi_config = WORKSPACE_SETTINGS.get("jedi_config", {})
+    jedi_config = USER_DEFAULTS.get("jedi_config", {})
     completion_capabilities = CLIENT_CAPABILITIES["completion_capabilities"]
     workspace = LSP_SERVER.workspace
     document = workspace.get_document(params.text_document.uri)
