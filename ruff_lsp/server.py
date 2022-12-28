@@ -555,6 +555,10 @@ def _match_line_endings(document: workspace.Document, text: str) -> str:
 ###
 @LSP_SERVER.feature(TEXT_DOCUMENT_COMPLETION)
 def completions(params: CompletionParams):
+    import logging
+
+    logger = logging.getLogger("debugLogger")
+    logger.setLevel(logging.INFO)
     jedi_config = WORKSPACE_SETTINGS.get("jedi_config", {})
     completion_capabilities = CLIENT_CAPABILITIES["completion_capabilities"]
     workspace = LSP_SERVER.workspace
@@ -566,9 +570,11 @@ def completions(params: CompletionParams):
     if completions is None:
         return
 
+    logger.info(completions)
+    logger.info([item for item in completions])
     return CompletionList(
         is_incomplete=False,
-        item=[CompletionItem(**item) for item in completions],
+        item=[CompletionItem(label=item["label"]) for item in completions],
     )
 
 

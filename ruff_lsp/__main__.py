@@ -1,4 +1,7 @@
 import argparse
+import logging
+
+logging.basicConfig(filename="pygls.log", filemode="w", level=logging.DEBUG)
 
 
 def main() -> None:
