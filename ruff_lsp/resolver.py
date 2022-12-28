@@ -111,19 +111,19 @@ def format_snippet(completion, sig):
 
     if len(positional_args) > 1:
         # For completions with params, we can generate a snippet instead
-        snippet_completion["insertTextFormat"] = InsertTextFormat.Snippet
+        snippet_completion["insert_text_format"] = InsertTextFormat.Snippet
         snippet = completion.name + "("
         for i, param in enumerate(positional_args):
             snippet += "${%s:%s}" % (i + 1, param.name)
             if i < len(positional_args) - 1:
                 snippet += ", "
         snippet += ")$0"
-        snippet_completion["insertText"] = snippet
+        snippet_completion["insert_text"] = snippet
     elif len(positional_args) == 1:
-        snippet_completion["insertTextFormat"] = InsertTextFormat.Snippet
-        snippet_completion["insertText"] = completion.name + "($0)"
+        snippet_completion["insert_text_format"] = InsertTextFormat.Snippet
+        snippet_completion["insert_text"] = completion.name + "($0)"
     else:
-        snippet_completion["insertText"] = completion.name + "()"
+        snippet_completion["insert_text"] = completion.name + "()"
 
     return snippet_completion
 

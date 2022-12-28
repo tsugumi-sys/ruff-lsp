@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional
 import docstring_to_markdown
 import jedi
 import parso
-from lsprotocol.types import CompletionItemKind, Position
+from lsprotocol.types import CompletionItem, CompletionItemKind, Position
 from pygls.workspace import Document, Workspace
 
 from ruff_lsp.resolver import LABEL_RESOLVER, SNIPPET_RESOLVER
@@ -120,12 +120,11 @@ def jedi_completion(
 # completion item resolve
 ###
 def jedi_completion_item_resolve(
-    completion_capabilities: Dict, completion_item: List[Any]
+    completion_capabilities: Dict,
+    completion_item: CompletionItem,
 ):
     """Resolve formatted completion for given non-resolved completion"""
-    shared_data = JEDI_SHARED_DATA["LAST_JEDI_COMPLETIONS"].get(
-        completion_item["label"]
-    )
+    shared_data = JEDI_SHARED_DATA["LAST_JEDI_COMPLETIONS"].get(completion_item.label)
 
     item_capabilities = completion_capabilities.get("completionItem", {})
     supported_markup_kinds = item_capabilities.get("documentationFormat", ["markdown"])
@@ -272,8 +271,8 @@ def _format_completion(
     completion = {
         "label": _label(d, resolve_label_or_snippet),
         "kind": _TYPE_MAP.get(d.type),
-        "sortText": _sort_text(d),
-        "insertText": d.name,
+        "sort_text": _sort_text(d),
+        "insert_text": d.name,
     }
 
     if resolve:
@@ -283,7 +282,7 @@ def _format_completion(
         path = os.path.normpath(d.name)
         path = path.replace("\\", "\\\\")
         path = path.replace("/", "\\/")
-        completion["insertText"] = path
+        completion["insert_text"] = path
 
     if include_params and not is_exception_class(d.name):
         snippet = _snippet(d, resolve_label_or_snippet)

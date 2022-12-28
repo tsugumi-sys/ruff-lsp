@@ -6,7 +6,12 @@ import unittest
 from pathlib import Path
 from typing import Dict, NamedTuple
 
-from lsprotocol.types import CompletionItemKind, InsertTextFormat, Position
+from lsprotocol.types import (
+    CompletionItem,
+    CompletionItemKind,
+    InsertTextFormat,
+    Position,
+)
 from pygls.workspace import Document, Workspace
 
 from ruff_lsp.complete import jedi_completion, jedi_completion_item_resolve
@@ -151,7 +156,7 @@ class TestComplete(unittest.TestCase):
 
         resolved_documented_hello = jedi_completion_item_resolve(
             {},
-            completion_item=documented_hello_item,
+            completion_item=CompletionItem(**documented_hello_item),
         )
         expected_doc = {
             "kind": "markdown",
@@ -197,7 +202,7 @@ class TestComplete(unittest.TestCase):
             jedi_config, {}, self.workspace, doc, com_position
         )
 
-        items = {c["label"]: c["sortText"] for c in completions}
+        items = {c["label"]: c["sort_text"] for c in completions}
         assert items["hello()"] < items["_a_hello()"]
 
     def test_jedi_property_completion(self):
@@ -206,7 +211,7 @@ class TestComplete(unittest.TestCase):
         doc = Document(DOC_URI, source=DOC)
         completions = jedi_completion({}, {}, self.workspace, doc, com_position)
 
-        items = {c["label"]: c["sortText"] for c in completions}
+        items = {c["label"]: c["sort_text"] for c in completions}
         assert "world" in list(items.keys())[0]
 
     def test_jedi_method_completion(self):
@@ -227,8 +232,8 @@ class TestComplete(unittest.TestCase):
         ][0]
 
         # Ensure we only generate snippets for positional args
-        assert everyone_method["insertTextFormat"] == InsertTextFormat.Snippet
-        assert everyone_method["insertText"] == "everyone(${1:a}, ${2:b})$0"
+        assert everyone_method["insert_text_format"] == InsertTextFormat.Snippet
+        assert everyone_method["insert_text"] == "everyone(${1:a}, ${2:b})$0"
 
         # Disable param snippets
         jedi_config["include_params"] = False
@@ -242,8 +247,8 @@ class TestComplete(unittest.TestCase):
             if completion["label"] == "everyone(a, b, c, d)"
         ][0]
 
-        assert "insertTextFormat" not in everyone_method
-        assert everyone_method["insertText"] == "everyone"
+        assert "insert_text_format" not in everyone_method
+        assert everyone_method["insert_text"] == "everyone"
 
     @unittest.skipIf(
         PY2 or (sys.platform.startswith("linux") and CI is not None),
@@ -294,14 +299,14 @@ class TestComplete(unittest.TestCase):
         completions = jedi_completion(
             jedi_config, completion_capabilities, self.workspace, doc, com_position
         )
-        assert completions[0]["insertText"] == "defaultdict"
+        assert completions[0]["insert_text"] == "defaultdict"
 
         com_position = Position(line=1, character=len(doc_snippets))
         completions = jedi_completion(
             jedi_config, completion_capabilities, self.workspace, doc, com_position
         )
-        assert completions[0]["insertText"] == "defaultdict($0)"
-        assert completions[0]["insertTextFormat"] == InsertTextFormat.Snippet
+        assert completions[0]["insert_text"] == "defaultdict($0)"
+        assert completions[0]["insert_text_format"] == InsertTextFormat.Snippet
 
     def test_snippets_completion_at_most(self):
         doc_snippets = "from collections import defaultdict \na=defaultdict"
@@ -312,8 +317,8 @@ class TestComplete(unittest.TestCase):
         completions = jedi_completion(
             jedi_config, completion_capabilities, self.workspace, doc, com_position
         )
-        assert completions[0]["insertText"] == "defaultdict"
-        assert not completions[0].get("insertTextFormat", None)
+        assert completions[0]["insert_text"] == "defaultdict"
+        assert not completions[0].get("insert_text_format", None)
 
     def test_completion_with_class_objects(self):
         doc_text = "class FOOBAR(Object): pass \nFOOB"
@@ -362,7 +367,7 @@ class TestComplete(unittest.TestCase):
         )
 
         out = "divmod(${1:x}, ${2:y})$0"
-        assert completions[0]["insertText"] == out
+        assert completions[0]["insert_text"] == out
 
     def test_multiline_import_snippets(self):
         doc_text = "from datetime import(\n date,\n datetime)\na=date"
@@ -374,13 +379,13 @@ class TestComplete(unittest.TestCase):
         completions = jedi_completion(
             jedi_config, completion_capabilities, self.workspace, doc, com_position
         )
-        assert completions[0]["insertText"] == "date"
+        assert completions[0]["insert_text"] == "date"
 
         com_position = Position(line=2, character=9)
         completions = jedi_completion(
             jedi_config, completion_capabilities, self.workspace, doc, com_position
         )
-        assert completions[0]["insertText"] == "datetime"
+        assert completions[0]["insert_text"] == "datetime"
 
     def test_multiline_snippets(self):
         doc_text = "from datetime import\\\n date,\\\n datetime \na=date"
@@ -392,13 +397,13 @@ class TestComplete(unittest.TestCase):
         completions = jedi_completion(
             jedi_config, completion_capabilities, self.workspace, doc, com_position
         )
-        assert completions[0]["insertText"] == "date"
+        assert completions[0]["insert_text"] == "date"
 
         com_position = Position(line=2, character=9)
         completions = jedi_completion(
             jedi_config, completion_capabilities, self.workspace, doc, com_position
         )
-        assert completions[0]["insertText"] == "datetime"
+        assert completions[0]["insert_text"] == "datetime"
 
     def test_multistatement_snippet(self):
         completion_capabilities = {"completionItem": {"snippetSupport": True}}
@@ -410,7 +415,7 @@ class TestComplete(unittest.TestCase):
         completions = jedi_completion(
             jedi_config, completion_capabilities, self.workspace, doc, com_position
         )
-        assert completions[0]["insertText"] == "date"
+        assert completions[0]["insert_text"] == "date"
 
         doc_text = "from math import fmod; a = fmod"
         doc = Document(DOC_URI, source=doc_text)
@@ -418,7 +423,7 @@ class TestComplete(unittest.TestCase):
         completions = jedi_completion(
             jedi_config, completion_capabilities, self.workspace, doc, com_position
         )
-        assert completions[0]["insertText"] == "fmod(${1:x}, ${2:y})$0"
+        assert completions[0]["insert_text"] == "fmod(${1:x}, ${2:y})$0"
 
     def test_jedi_completion_extra_paths(self):
         # Create a tempfile with some content and pass to extra_paths
@@ -476,7 +481,7 @@ foo.s"""
         )
         assert completions[0]["label"] == "loghub"
 
-        resolved = jedi_completion_item_resolve({}, completions[0])
+        resolved = jedi_completion_item_resolve({}, CompletionItem(**completions[0]))
         assert "changelog generator" in resolved["documentation"]["value"].lower()
 
     def test_document_path_completions(self):
