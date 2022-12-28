@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional
 import docstring_to_markdown
 import jedi
 import parso
-from lsprotocol.types import CompletionItemKind, Position
+from lsprotocol.types import CompletionItemKind
 from pygls.workspace import Document, Workspace
 
 from ruff_lsp.resolver import LABEL_RESOLVER, SNIPPET_RESOLVER
@@ -25,7 +25,7 @@ def jedi_completion(
     completion_capabilities: Dict,
     workspace: Workspace,
     document: Document,
-    position: Position,
+    position: Dict,
 ):
     resolve_eagerly = jedi_config.get("eager", False)
     code_position = position_to_jedi_linecolumn(document, position)
@@ -159,7 +159,7 @@ def choose_markup_kind(client_supported_markup_kinds: List[str]) -> str:
 ###
 # code borrowed from https://github.com/python-lsp/python-lsp-server/blob/develop/pylsp/workspace.py
 ###
-def position_to_jedi_linecolumn(document: Document, position: Position) -> Dict:
+def position_to_jedi_linecolumn(document: Document, position: Dict) -> Dict:
     """
     Convert the LSP format 'line', 'character' to Jedi's 'line' to 'column'
 
@@ -191,7 +191,7 @@ def jedi_script(
     jedi_config: Dict,
     workspace: Workspace,
     document: Document,
-    position: Optional[Position] = None,
+    position: Optional[Dict] = None,
     use_document_path: bool = False,
 ) -> jedi.Project:
     extra_paths = []
@@ -416,7 +416,7 @@ _IMPORTS = ("import_name", "import_from")
 _ERRORS = ("error_node",)
 
 
-def use_snippets(document: Document, position: Position):
+def use_snippets(document: Document, position: Dict):
     """
     Determine if it's necessary to return snippets in code completions.
 
