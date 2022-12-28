@@ -27,6 +27,7 @@ def jedi_completion(
     document: Document,
     position: Dict,
 ):
+    position = {"line": position.line, "character": position.character}
     resolve_eagerly = jedi_config.get("eager", False)
     code_position = position_to_jedi_linecolumn(document, position)
 
