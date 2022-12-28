@@ -15,6 +15,7 @@ from lsprotocol.types import (
     CODE_ACTION_RESOLVE,
     INITIALIZE,
     TEXT_DOCUMENT_CODE_ACTION,
+    TEXT_DOCUMENT_COMPLETION,
     TEXT_DOCUMENT_DID_CHANGE,
     TEXT_DOCUMENT_DID_CLOSE,
     TEXT_DOCUMENT_DID_OPEN,
@@ -26,6 +27,8 @@ from lsprotocol.types import (
     CodeActionKind,
     CodeActionOptions,
     CodeActionParams,
+    CompletionList,
+    CompletionParams,
     Diagnostic,
     DiagnosticSeverity,
     DiagnosticTag,
@@ -51,6 +54,7 @@ from pygls import protocol, server, uris, workspace
 from typing_extensions import TypedDict
 
 from ruff_lsp import __version__, utils
+from ruff_lsp.complete import jedi_completion
 
 USER_DEFAULTS: dict[str, str] = {}
 WORKSPACE_SETTINGS: dict[str, dict[str, Any]] = {}
@@ -541,6 +545,17 @@ def _match_line_endings(document: workspace.Document, text: str) -> str:
     if actual == expected or actual is None or expected is None:
         return text
     return text.replace(actual, expected)
+
+
+###
+# Completion
+###
+@LSP_SERVER.feature(TEXT_DOCUMENT_COMPLETION)
+def completions(params: CompletionParams):
+    document = LSP_SERVER.workspace.get_document(params.text_document.uri)
+    return CompletionList(
+        is_incomplete=False, item=jedi_completion({}, document, params.position)
+    )
 
 
 ###
