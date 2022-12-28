@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional
 import docstring_to_markdown
 import jedi
 import parso
-from lsprotocol.types import CompletionItemKind
+from lsprotocol.types import CompletionItemKind, Position
 from pygls.workspace import Document, Workspace
 
 from ruff_lsp.resolver import LABEL_RESOLVER, SNIPPET_RESOLVER
@@ -25,9 +25,8 @@ def jedi_completion(
     completion_capabilities: Dict,
     workspace: Workspace,
     document: Document,
-    position: Dict,
+    position: Position,
 ):
-    position = {"line": position.line, "character": position.character}
     resolve_eagerly = jedi_config.get("eager", False)
     code_position = position_to_jedi_linecolumn(document, position)
 
@@ -159,7 +158,7 @@ def choose_markup_kind(client_supported_markup_kinds: List[str]) -> str:
 ###
 # code borrowed from https://github.com/python-lsp/python-lsp-server/blob/develop/pylsp/workspace.py
 ###
-def position_to_jedi_linecolumn(document: Document, position: Dict) -> Dict:
+def position_to_jedi_linecolumn(document: Document, position: Position) -> Dict:
     """
     Convert the LSP format 'line', 'character' to Jedi's 'line' to 'column'
 
@@ -168,10 +167,8 @@ def position_to_jedi_linecolumn(document: Document, position: Dict) -> Dict:
     code_position = {}
     if position:
         code_position = {
-            "line": position["line"] + 1,
-            "column": clip_column(
-                position["character"], document.lines, position["line"]
-            ),
+            "line": position.line + 1,
+            "column": clip_column(position.character, document.lines, position.line),
         }
     return code_position
 
@@ -191,7 +188,7 @@ def jedi_script(
     jedi_config: Dict,
     workspace: Workspace,
     document: Document,
-    position: Optional[Dict] = None,
+    position: Optional[Position] = None,
     use_document_path: bool = False,
 ) -> jedi.Project:
     extra_paths = []
@@ -416,16 +413,16 @@ _IMPORTS = ("import_name", "import_from")
 _ERRORS = ("error_node",)
 
 
-def use_snippets(document: Document, position: Dict):
+def use_snippets(document: Document, position: Position):
     """
     Determine if it's necessary to return snippets in code completions.
 
     This returns `False` if a completion is being requested on an import
     statement, `True` otherwise.
     """
-    line = position["line"]
+    line = position.line
     lines = document.source.split("\n", line)
-    act_lines = [lines[line][: position["character"]]]
+    act_lines = [lines[line][: position.character]]
     line -= 1
     last_character = ""
     while line > -1:

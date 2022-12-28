@@ -568,7 +568,7 @@ def completions(params: CompletionParams):
 
     return CompletionList(
         is_incomplete=False,
-        item=[CompletionItem(**item) for item in flatten(completions)],
+        item=[CompletionItem(**item) for item in completions],
     )
 
 
@@ -576,10 +576,6 @@ def completions(params: CompletionParams):
 def completion_item_resolve(params: CompletionItem):
     completion_capabilities = CLIENT_CAPABILITIES["completion_capabilities"]
     return jedi_completion_item_resolve(completion_capabilities, params)
-
-
-def flatten(list_of_lists: list[list[Any]]):
-    return [item for lst in list_of_lists for item in lst]
 
 
 ###

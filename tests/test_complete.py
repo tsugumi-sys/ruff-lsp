@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 from typing import Dict, NamedTuple
 
-from lsprotocol.types import CompletionItemKind, InsertTextFormat
+from lsprotocol.types import CompletionItemKind, InsertTextFormat, Position
 from pygls.workspace import Document, Workspace
 
 from ruff_lsp.complete import jedi_completion, jedi_completion_item_resolve
@@ -47,7 +47,7 @@ def documented_hello():
 
 class TypeCase(NamedTuple):
     document: str
-    position: Dict
+    position: Position
     label: str
     expected: CompletionItemKind
 
@@ -55,37 +55,37 @@ class TypeCase(NamedTuple):
 TYPE_CASES: Dict[str, TypeCase] = {
     "variable": TypeCase(
         document="test = 1\ntes",
-        position={"line": 1, "character": 3},
+        position=Position(line=1, character=3),
         label="test",
         expected=CompletionItemKind.Variable,
     ),
     "function": TypeCase(
         document="def test():\n    pass\ntes",
-        position={"line": 2, "character": 3},
+        position=Position(line=2, character=3),
         label="test()",
         expected=CompletionItemKind.Function,
     ),
     "keyword": TypeCase(
         document="fro",
-        position={"line": 0, "character": 3},
+        position=Position(line=0, character=3),
         label="from",
         expected=CompletionItemKind.Keyword,
     ),
     "file": TypeCase(
         document='"' + __file__[:-2].replace('"', '\\"') + '"',
-        position={"line": 0, "character": len(__file__) - 2},
+        position=Position(line=0, character=len(__file__) - 2),
         label=Path(__file__).name + '"',
         expected=CompletionItemKind.File,
     ),
     "module": TypeCase(
         document="import statis",
-        position={"line": 0, "character": 13},
+        position=Position(line=0, character=13),
         label="statistics",
         expected=CompletionItemKind.Module,
     ),
     "class": TypeCase(
         document="KeyErr",
-        position={"line": 0, "character": 6},
+        position=Position(line=0, character=6),
         label="KeyError",
         expected=CompletionItemKind.Class,
     ),
@@ -97,7 +97,7 @@ TYPE_CASES: Dict[str, TypeCase] = {
             "        pass\n"
             "A().tes"
         ),
-        position={"line": 4, "character": 5},
+        position=Position(line=4, character=5),
         label="test",
         expected=CompletionItemKind.Property,
     ),
@@ -119,7 +119,7 @@ class TestComplete(unittest.TestCase):
             assert items[case.label]["kind"] == case.expected
 
     def test_jedi_completion(self):
-        com_position = {"line": 1, "character": 15}
+        com_position = Position(line=1, character=15)
         doc = Document(DOC_URI, source=DOC)
         items = jedi_completion({}, {}, self.workspace, doc, com_position)
 
@@ -128,11 +128,11 @@ class TestComplete(unittest.TestCase):
         assert "isfile(path)" in labels
 
         # Test we don't throw with big character
-        jedi_completion({}, {}, self.workspace, doc, {"line": 1, "character": 1000})
+        jedi_completion({}, {}, self.workspace, doc, Position(line=1, character=1000))
 
     def test_jedi_completion_resolve(self):
         # Over the blank line
-        com_position = {"line": 8, "character": 0}
+        com_position = Position(line=8, character=0)
         doc = Document(DOC_URI, source=DOC)
         jedi_config = {"resolve_at_most": math.inf}
         completions = jedi_completion(
@@ -161,7 +161,7 @@ class TestComplete(unittest.TestCase):
 
     def test_jedi_completion_with_fuzzy_enabled(self):
         jedi_config = {"fuzzy": True}
-        com_position = {"line": 1, "character": 15}
+        com_position = Position(line=1, character=15)
         doc = Document(DOC_URI, source=DOC)
         items = jedi_completion(jedi_config, {}, self.workspace, doc, com_position)
 
@@ -171,11 +171,11 @@ class TestComplete(unittest.TestCase):
         assert items[0]["label"] == expected
 
         # Test we don't throw with big character
-        jedi_completion({}, {}, self.workspace, doc, {"line": 1, "character": 1000})
+        jedi_completion({}, {}, self.workspace, doc, Position(line=1, character=1000))
 
     def test_jedi_completion_resolve_at_most(self):
         # Over 'i' in os.path.isabs(...)
-        com_position = {"line": 1, "character": 15}
+        com_position = Position(line=1, character=15)
         doc = Document(DOC_URI, source=DOC)
         jedi_config = {"resolve_at_most": 0}
         items = jedi_completion(jedi_config, {}, self.workspace, doc, com_position)
@@ -190,7 +190,7 @@ class TestComplete(unittest.TestCase):
 
     def test_jedi_completion_ordering(self):
         # Over the blank line
-        com_position = {"line": 8, "character": 0}
+        com_position = Position(line=8, character=0)
         doc = Document(DOC_URI, source=DOC)
         jedi_config = {"resolve_at_most": math.inf}
         completions = jedi_completion(
@@ -202,7 +202,7 @@ class TestComplete(unittest.TestCase):
 
     def test_jedi_property_completion(self):
         # Over the 'w' in 'print Hello().world'
-        com_position = {"line": 18, "character": 15}
+        com_position = Position(line=18, character=15)
         doc = Document(DOC_URI, source=DOC)
         completions = jedi_completion({}, {}, self.workspace, doc, com_position)
 
@@ -211,7 +211,7 @@ class TestComplete(unittest.TestCase):
 
     def test_jedi_method_completion(self):
         # Over the 'y' in 'print Hello().every'
-        com_position = {"line": 20, "character": 19}
+        com_position = Position(line=20, character=19)
         doc = Document(DOC_URI, source=DOC)
 
         completion_capabilities = {"completionItem": {"snippetSupport": True}}
@@ -252,7 +252,7 @@ class TestComplete(unittest.TestCase):
     def test_pyqt_jedi_completion(self):
         # Over 'QA' in 'from PyQt5.QtWidgets import QApplication'
         doc_pyqt = "from PyQt5.QtWidgets import QA"
-        com_position = {"line": 0, "character": len(doc_pyqt)}
+        com_position = Position(line=0, character=len(doc_pyqt))
         doc = Document(DOC_URI, source=doc_pyqt)
         completions = jedi_completion({}, {}, self.workspace, doc, com_position)
 
@@ -260,7 +260,7 @@ class TestComplete(unittest.TestCase):
 
     def test_numpy_completions(self):
         doc_numpy = "import numpy as np; np."
-        com_position = {"line": 0, "character": len(doc_numpy)}
+        com_position = Position(line=0, character=len(doc_numpy))
         doc = Document(DOC_URI, source=doc_numpy)
         items = jedi_completion({}, {}, self.workspace, doc, com_position)
 
@@ -269,7 +269,7 @@ class TestComplete(unittest.TestCase):
 
     def test_pandas_completions(self):
         doc_pandas = "import pandas as pd; pd."
-        com_position = {"line": 0, "character": len(doc_pandas)}
+        com_position = Position(line=0, character=len(doc_pandas))
         doc = Document(DOC_URI, source=doc_pandas)
         items = jedi_completion({}, {}, self.workspace, doc, com_position)
 
@@ -278,7 +278,7 @@ class TestComplete(unittest.TestCase):
 
     def test_matplotlib_completions(self):
         doc_mpl = "import matplotlib.pyplot as plt; plt."
-        com_position = {"line": 0, "character": len(doc_mpl)}
+        com_position = Position(line=0, character=len(doc_mpl))
         doc = Document(DOC_URI, source=doc_mpl)
         items = jedi_completion({}, {}, self.workspace, doc, com_position)
 
@@ -287,7 +287,7 @@ class TestComplete(unittest.TestCase):
 
     def test_snippets_completion(self):
         doc_snippets = "from collections import defaultdict \na=defaultdict"
-        com_position = {"line": 0, "character": 35}
+        com_position = Position(line=0, character=35)
         doc = Document(DOC_URI, source=doc_snippets)
         completion_capabilities = {"completionItem": {"snippetSupport": True}}
         jedi_config = {"include_params": True}
@@ -296,7 +296,7 @@ class TestComplete(unittest.TestCase):
         )
         assert completions[0]["insertText"] == "defaultdict"
 
-        com_position = {"line": 1, "character": len(doc_snippets)}
+        com_position = Position(line=1, character=len(doc_snippets))
         completions = jedi_completion(
             jedi_config, completion_capabilities, self.workspace, doc, com_position
         )
@@ -308,7 +308,7 @@ class TestComplete(unittest.TestCase):
         doc = Document(DOC_URI, source=doc_snippets)
         completion_capabilities = {"completionItem": {"snippetSupport": True}}
         jedi_config = {"include_params": True, "resolve_at_most": 0}
-        com_position = {"line": 1, "character": len(doc_snippets)}
+        com_position = Position(line=1, character=len(doc_snippets))
         completions = jedi_completion(
             jedi_config, completion_capabilities, self.workspace, doc, com_position
         )
@@ -317,7 +317,7 @@ class TestComplete(unittest.TestCase):
 
     def test_completion_with_class_objects(self):
         doc_text = "class FOOBAR(Object): pass \nFOOB"
-        com_position = {"line": 1, "character": 4}
+        com_position = Position(line=1, character=4)
         doc = Document(DOC_URI, source=doc_text)
         completion_capabilities = {"completionItem": {"snippetSupport": True}}
         jedi_config = {"include_params": True, "include_class_objects": True}
@@ -335,7 +335,7 @@ class TestComplete(unittest.TestCase):
 
     def test_completion_with_function_object(self):
         doc_text = "def foobar(): pass\nfoob"
-        com_position = {"line": 1, "character": 4}
+        com_position = Position(line=1, character=4)
         doc = Document(DOC_URI, source=doc_text)
         completion_capabilities = {"completionItem": {"snippetSupport": True}}
         jedi_config = {"include_params": True, "include_function_objects": True}
@@ -353,7 +353,7 @@ class TestComplete(unittest.TestCase):
 
     def test_snippet_parsing(self):
         doc_text = "divmod"
-        com_position = {"line": 0, "character": 6}
+        com_position = Position(line=0, character=6)
         doc = Document(DOC_URI, source=doc_text)
         completion_capabilities = {"completionItem": {"snippetSupport": True}}
         jedi_config = {"include_params": True}
@@ -370,13 +370,13 @@ class TestComplete(unittest.TestCase):
         completion_capabilities = {"completionItem": {"snippetSupport": True}}
         jedi_config = {"include_params": True}
 
-        com_position = {"line": 1, "character": 5}
+        com_position = Position(line=1, character=5)
         completions = jedi_completion(
             jedi_config, completion_capabilities, self.workspace, doc, com_position
         )
         assert completions[0]["insertText"] == "date"
 
-        com_position = {"line": 2, "character": 9}
+        com_position = Position(line=2, character=9)
         completions = jedi_completion(
             jedi_config, completion_capabilities, self.workspace, doc, com_position
         )
@@ -388,13 +388,13 @@ class TestComplete(unittest.TestCase):
         completion_capabilities = {"completionItem": {"snippetSupport": True}}
         jedi_config = {"include_params": True}
 
-        com_position = {"line": 1, "character": 5}
+        com_position = Position(line=1, character=5)
         completions = jedi_completion(
             jedi_config, completion_capabilities, self.workspace, doc, com_position
         )
         assert completions[0]["insertText"] == "date"
 
-        com_position = {"line": 2, "character": 9}
+        com_position = Position(line=2, character=9)
         completions = jedi_completion(
             jedi_config, completion_capabilities, self.workspace, doc, com_position
         )
@@ -406,7 +406,7 @@ class TestComplete(unittest.TestCase):
 
         doc_text = "a = 1; from datetime import date"
         doc = Document(DOC_URI, source=doc_text)
-        com_position = {"line": 0, "character": len(doc_text)}
+        com_position = Position(line=0, character=len(doc_text))
         completions = jedi_completion(
             jedi_config, completion_capabilities, self.workspace, doc, com_position
         )
@@ -414,7 +414,7 @@ class TestComplete(unittest.TestCase):
 
         doc_text = "from math import fmod; a = fmod"
         doc = Document(DOC_URI, source=doc_text)
-        com_position = {"line": 0, "character": len(doc_text)}
+        com_position = Position(line=0, character=len(doc_text))
         completions = jedi_completion(
             jedi_config, completion_capabilities, self.workspace, doc, com_position
         )
@@ -437,7 +437,7 @@ foo.s"""
         doc = Document(DOC_URI, source=doc_content)
 
         # After 'foo.s' without extra paths
-        com_position = {"line": 1, "character": 5}
+        com_position = Position(line=1, character=5)
         completions = jedi_completion({}, {}, self.workspace, doc, com_position)
         assert completions is None
 
@@ -457,7 +457,7 @@ foo.s"""
         doc = Document(DOC_URI, source=doc_content)
 
         # After 'import logh' with default environment
-        com_position = {"line": 0, "character": 11}
+        com_position = Position(line=0, character=11)
         assert os.path.isdir("/tmp/pyenv")
 
         jedi_config = {"environment": None}
@@ -497,6 +497,6 @@ mymodule.f"""
         doc_uri = from_fs_path(doc_path)
         doc = Document(doc_uri, doc_content)
 
-        com_position = {"line": 1, "character": 10}
+        com_position = Position(line=1, character=10)
         completions = jedi_completion({}, {}, self.workspace, doc, com_position)
         assert completions[0]["label"] == "foo()"
