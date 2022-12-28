@@ -14,41 +14,41 @@ AUTO_IMPORT_MODULES = "auto_import_modules"
 DEFAULT_AUTO_IMPORT_MODULES = ["numpy"]
 JEDI_ENVIRONMENTS = {}
 
-JEDI_SETTINGS = {"eager": False}
 JEDI_SHARED_DATA = {}
 
+###
+# Completion with jedi
 # Borrow code from https://github.com/python-lsp/python-lsp-server/blob/develop/pylsp/plugins/jedi_completion.py
+###
 def jedi_completion(
-    config: Dict,
+    jedi_config: Dict,
+    completion_capabilities: Dict,
     workspace: Workspace,
     document: Document,
     position: Position,
 ):
-    resolve_eagerly = JEDI_SETTINGS.get("eager", False)
+    resolve_eagerly = jedi_config.get("eager", False)
     code_position = position_to_jedi_linecolumn(document, position)
 
-    code_position["fuzzy"] = JEDI_SETTINGS.get("fuzzy", False)
-    completions = jedi_script(workspace, document, use_document_path=True).complete(
-        **code_position
-    )
+    code_position["fuzzy"] = jedi_config.get("fuzzy", False)
+    completions = jedi_script(
+        jedi_config, workspace, document, use_document_path=True
+    ).complete(**code_position)
 
     if not completions:
         return None
 
-    completion_capabilities = config.get("textDocument", {}).get("completion", {})
     item_capabilities = completion_capabilities.get("completionItem", {})
     snippet_support = item_capabilities.get("snippetSupport")
     supported_markup_kinds = item_capabilities.get("documentationFormat", ["markdown"])
     preferred_markup_kind = choose_markup_kind(supported_markup_kinds)
 
-    should_include_params = JEDI_SETTINGS.get("include_params")
-    should_include_class_objects = JEDI_SETTINGS.get("include_class_objects", False)
-    should_include_function_objects = JEDI_SETTINGS.get(
-        "include_function_objects", False
-    )
+    should_include_params = jedi_config.get("include_params")
+    should_include_class_objects = jedi_config.get("include_class_objects", False)
+    should_include_function_objects = jedi_config.get("include_function_objects", False)
 
-    max_to_resolve = JEDI_SETTINGS.get("resolve_at_most", 25)
-    modules_to_cache_for = JEDI_SETTINGS.get("cache_for", None)
+    max_to_resolve = jedi_config.get("resolve_at_most", 25)
+    modules_to_cache_for = jedi_config.get("cache_for", None)
     if modules_to_cache_for is not None:
         LABEL_RESOLVER.cached_modules = modules_to_cache_for
         SNIPPET_RESOLVER.cached_modules = modules_to_cache_for
@@ -118,6 +118,27 @@ def jedi_completion(
 
 
 ###
+# completion item resolve
+###
+def jedi_completion_item_resolve(
+    completion_capabilities: Dict, completion_item: List[Any]
+):
+    """Resolve formatted completion for given non-resolved completion"""
+    shared_data = JEDI_SHARED_DATA["LAST_JEDI_COMPLETIONS"].get(
+        completion_item["label"]
+    )
+
+    item_capabilities = completion_capabilities.get("completionItem", {})
+    supported_markup_kinds = item_capabilities.get("documentationFormat", ["markdown"])
+    preferred_markup_kind = choose_markup_kind(supported_markup_kinds)
+
+    if shared_data:
+        completion, data = shared_data
+        return _resolve_completion(completion, data, markup_kind=preferred_markup_kind)
+    return completion_item
+
+
+###
 # code borrowed from https://github.com/python-lsp/python-lsp-server/blob/develop/pylsp/_utils.py
 ###
 SERVER_SUPPORTED_MARKUP_KINDS = ("markdown", "plaintext")
@@ -167,9 +188,9 @@ def clip_column(column, lines, line_number):
 
 
 def jedi_script(
+    jedi_config: Dict,
     workspace: Workspace,
     document: Document,
-    config: Optional[Dict] = None,
     position: Optional[Position] = None,
     use_document_path: bool = False,
 ) -> jedi.Project:
@@ -177,14 +198,14 @@ def jedi_script(
     environment_path = None
     env_vars = None
 
-    if config is not None:
-        JEDI_SETTINGS[AUTO_IMPORT_MODULES] = config.get(
+    if jedi_config is not None:
+        jedi_config[AUTO_IMPORT_MODULES] = jedi_config.get(
             AUTO_IMPORT_MODULES, DEFAULT_AUTO_IMPORT_MODULES
         )
 
-        environment_path = config.get("environment")
-        extra_paths = config.get("extra_paths", [])
-        env_vars = config.get("env_vars")
+        environment_path = jedi_config.get("environment")
+        extra_paths = jedi_config.get("extra_paths", [])
+        env_vars = jedi_config.get("env_vars")
 
     # Drop PYTHONPATH from env_vars before creating the environment because that makes
     # Jedi throw an error.

@@ -13,6 +13,7 @@ from typing import Any, Sequence, cast
 
 from lsprotocol.types import (
     CODE_ACTION_RESOLVE,
+    COMPLETION_ITEM_RESOLVE,
     INITIALIZE,
     TEXT_DOCUMENT_CODE_ACTION,
     TEXT_DOCUMENT_COMPLETION,
@@ -27,6 +28,7 @@ from lsprotocol.types import (
     CodeActionKind,
     CodeActionOptions,
     CodeActionParams,
+    CompletionItem,
     CompletionList,
     CompletionParams,
     Diagnostic,
@@ -54,13 +56,14 @@ from pygls import protocol, server, uris, workspace
 from typing_extensions import TypedDict
 
 from ruff_lsp import __version__, utils
-from ruff_lsp.complete import jedi_completion
+from ruff_lsp.complete import jedi_completion, jedi_completion_item_resolve
 
 USER_DEFAULTS: dict[str, str] = {}
 WORKSPACE_SETTINGS: dict[str, dict[str, Any]] = {}
 INTERPRETER_PATHS: dict[str, str] = {}
 CLIENT_CAPABILITIES: dict[str, bool] = {
     CODE_ACTION_RESOLVE: True,
+    "completion_capabilities": {},
 }
 
 MAX_WORKERS = 5
@@ -552,10 +555,31 @@ def _match_line_endings(document: workspace.Document, text: str) -> str:
 ###
 @LSP_SERVER.feature(TEXT_DOCUMENT_COMPLETION)
 def completions(params: CompletionParams):
-    document = LSP_SERVER.workspace.get_document(params.text_document.uri)
-    return CompletionList(
-        is_incomplete=False, item=jedi_completion({}, document, params.position)
+    jedi_config = WORKSPACE_SETTINGS["jedi_config"]
+    completion_capabilities = CLIENT_CAPABILITIES["completion_capabilities"]
+    workspace = LSP_SERVER.workspace
+    document = workspace.get_document(params.text_document.uri)
+    completions = jedi_completion(
+        jedi_config, completion_capabilities, workspace, document, params.position
     )
+
+    if completions is None:
+        return
+
+    return CompletionList(
+        is_incomplete=False,
+        item=[CompletionItem(**item) for item in flatten(completions)],
+    )
+
+
+@LSP_SERVER.feature(COMPLETION_ITEM_RESOLVE)
+def completion_item_resolve(params: CompletionItem):
+    completion_capabilities = CLIENT_CAPABILITIES["completion_capabilities"]
+    return jedi_completion_item_resolve(completion_capabilities, params)
+
+
+def flatten(list_of_lists: list[list[Any]]):
+    return [item for lst in list_of_lists for item in lst]
 
 
 ###
@@ -570,6 +594,9 @@ def initialize(params: InitializeParams) -> None:
     CLIENT_CAPABILITIES[CODE_ACTION_RESOLVE] = _supports_code_action_resolve(
         params.capabilities
     )
+    CLIENT_CAPABILITIES["completion_capabilities"] = params.capabilites.get(
+        "textDocument", {}
+    ).get("completion", {})
 
     # Extract `settings` from the initialization options.
     user_settings = (params.initialization_options or {}).get(  # type: ignore
