@@ -555,7 +555,7 @@ def _match_line_endings(document: workspace.Document, text: str) -> str:
 ###
 @LSP_SERVER.feature(TEXT_DOCUMENT_COMPLETION)
 def completions(params: CompletionParams):
-    jedi_config = WORKSPACE_SETTINGS.get("jedi_config", {})
+    jedi_config = USER_DEFAULTS.get("jedi_config", {})
     completion_capabilities = CLIENT_CAPABILITIES["completion_capabilities"]
     workspace = LSP_SERVER.workspace
     document = workspace.get_document(params.text_document.uri)
@@ -568,7 +568,7 @@ def completions(params: CompletionParams):
 
     return CompletionList(
         is_incomplete=False,
-        item=[CompletionItem(**item) for item in flatten(completions)],
+        items=[CompletionItem(**item) for item in completions],
     )
 
 
@@ -576,10 +576,6 @@ def completions(params: CompletionParams):
 def completion_item_resolve(params: CompletionItem):
     completion_capabilities = CLIENT_CAPABILITIES["completion_capabilities"]
     return jedi_completion_item_resolve(completion_capabilities, params)
-
-
-def flatten(list_of_lists: list[list[Any]]):
-    return [item for lst in list_of_lists for item in lst]
 
 
 ###

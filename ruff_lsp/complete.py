@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional
 import docstring_to_markdown
 import jedi
 import parso
-from lsprotocol.types import CompletionItemKind, Position
+from lsprotocol.types import CompletionItem, CompletionItemKind, Position
 from pygls.workspace import Document, Workspace
 
 from ruff_lsp.resolver import LABEL_RESOLVER, SNIPPET_RESOLVER
@@ -30,10 +30,9 @@ def jedi_completion(
     resolve_eagerly = jedi_config.get("eager", False)
     code_position = position_to_jedi_linecolumn(document, position)
 
-    code_position["fuzzy"] = jedi_config.get("fuzzy", False)
     completions = jedi_script(
         jedi_config, workspace, document, use_document_path=True
-    ).complete(**code_position)
+    ).complete(**code_position, fuzzy=jedi_config.get("fuzzy", False))
 
     if not completions:
         return None
@@ -121,12 +120,11 @@ def jedi_completion(
 # completion item resolve
 ###
 def jedi_completion_item_resolve(
-    completion_capabilities: Dict, completion_item: List[Any]
+    completion_capabilities: Dict,
+    completion_item: CompletionItem,
 ):
     """Resolve formatted completion for given non-resolved completion"""
-    shared_data = JEDI_SHARED_DATA["LAST_JEDI_COMPLETIONS"].get(
-        completion_item["label"]
-    )
+    shared_data = JEDI_SHARED_DATA["LAST_JEDI_COMPLETIONS"].get(completion_item.label)
 
     item_capabilities = completion_capabilities.get("completionItem", {})
     supported_markup_kinds = item_capabilities.get("documentationFormat", ["markdown"])
@@ -168,10 +166,8 @@ def position_to_jedi_linecolumn(document: Document, position: Position) -> Dict:
     code_position = {}
     if position:
         code_position = {
-            "line": position["line"] + 1,
-            "column": clip_column(
-                position["character"], document.lines, position["line"]
-            ),
+            "line": position.line + 1,
+            "column": clip_column(position.character, document.lines, position.line),
         }
     return code_position
 
@@ -275,8 +271,8 @@ def _format_completion(
     completion = {
         "label": _label(d, resolve_label_or_snippet),
         "kind": _TYPE_MAP.get(d.type),
-        "sortText": _sort_text(d),
-        "insertText": d.name,
+        "sort_text": _sort_text(d),
+        "insert_text": d.name,
     }
 
     if resolve:
@@ -286,7 +282,7 @@ def _format_completion(
         path = os.path.normpath(d.name)
         path = path.replace("\\", "\\\\")
         path = path.replace("/", "\\/")
-        completion["insertText"] = path
+        completion["insert_text"] = path
 
     if include_params and not is_exception_class(d.name):
         snippet = _snippet(d, resolve_label_or_snippet)
@@ -423,9 +419,9 @@ def use_snippets(document: Document, position: Position):
     This returns `False` if a completion is being requested on an import
     statement, `True` otherwise.
     """
-    line = position["line"]
+    line = position.line
     lines = document.source.split("\n", line)
-    act_lines = [lines[line][: position["character"]]]
+    act_lines = [lines[line][: position.character]]
     line -= 1
     last_character = ""
     while line > -1:
