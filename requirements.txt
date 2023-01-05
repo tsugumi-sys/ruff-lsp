@@ -24,3 +24,4 @@ typing-extensions==4.4.0
     # via
     #   cattrs
     #   ruff-lsp (pyproject.toml)
+docstring-to-markdown==0.11
