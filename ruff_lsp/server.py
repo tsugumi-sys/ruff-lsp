@@ -6,6 +6,7 @@ import copy
 import json
 import os
 import pathlib
+import platform
 import re
 import sys
 import sysconfig
@@ -73,7 +74,7 @@ LSP_SERVER = server.LanguageServer(
     max_workers=MAX_WORKERS,
 )
 
-TOOL_MODULE = "ruff"
+TOOL_MODULE = "ruff.exe" if platform.system() == "Windows" else "ruff"
 TOOL_DISPLAY = "Ruff"
 TOOL_ARGS = ["--no-cache", "--no-fix", "--quiet", "--format", "json", "-"]
 
@@ -243,6 +244,7 @@ class Location(TypedDict):
 
 class Fix(TypedDict):
     content: str
+    message: str | None
     location: Location
     end_location: Location
 
@@ -395,13 +397,19 @@ def code_action(params: CodeActionParams) -> list[CodeAction] | None:
         for diagnostic in params.context.diagnostics:
             if diagnostic.source == "Ruff":
                 if diagnostic.data is not None:
+                    fix = cast(Fix, diagnostic.data)
+
+                    title: str
+                    if fix.get("message"):
+                        title = f"Ruff ({diagnostic.code}): {fix['message']}"
+                    elif diagnostic.code:
+                        title = f"Ruff: Fix {diagnostic.code}"
+                    else:
+                        title = "Ruff: Autofix"
+
                     actions.append(
                         CodeAction(
-                            title=(
-                                f"Ruff: Fix {diagnostic.code}"
-                                if diagnostic.code
-                                else "Ruff: Fix"
-                            ),
+                            title=title,
                             kind=CodeActionKind.QuickFix,
                             data=params.text_document.uri,
                             edit=_create_workspace_edit(
